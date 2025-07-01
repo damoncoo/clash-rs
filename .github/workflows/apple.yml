@@ -1,0 +1,46 @@
+name: Build iOS/macOS Framework
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-xcframework:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install dependencies
+        run: |
+          brew install cmake llvm protobuf
+          rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Make build script executable
+        run: chmod +x scripts/build_apple.sh
+
+      - name: Build clashrs.xcframework
+        run: ./scripts/build_apple.sh
+
+      - name: Archive xcframework
+        run: |
+          mkdir -p output
+          cp -r build/clashrs.xcframework output/
+          cd output
+          zip -r clashrs.xcframework.zip clashrs.xcframework
+
+      - name: Upload xcframework artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clashrs-xcframework
+          path: output/clashrs.xcframework.zip
